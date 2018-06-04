@@ -269,6 +269,7 @@ class RoadMap(object):
             cv2.putText(img, tx, (px, py), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (64, 64, 64), thickness=2)
 
         self._draw_notices(img)
+        img = self.add_alpha(img)
         cv2.imwrite(out_image_filename, img)
 
     def _draw_route(self, in_image_filename, out_image_filename, vertices, route):
@@ -291,7 +292,7 @@ class RoadMap(object):
             count = max([0, vertex_visited[vertex_index].index(route_index)])
             new_ofs = count * 8
 
-            span = 16
+            span = 32
             phase = (route_index // span) % 2
             weight = (route_index % span) / span
             color_value = weight if (phase == 0) else (1.0 - weight)
@@ -309,9 +310,10 @@ class RoadMap(object):
         for vertex in vertices:
             px, py = scale(vertex.x, vertex.y)
             tx = ','.join(map(str, vertex_visited[vertex.index]))
-            cv2.putText(img, tx, (px, py), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 0), thickness=1)
+            cv2.putText(img, tx, (px, py), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 0), thickness=1)
 
         self._draw_notices(img)
+        img = self.add_alpha(img)
         cv2.imwrite(out_image_filename, img)
 
     def _draw_notices(self, img):
@@ -320,6 +322,15 @@ class RoadMap(object):
             x, y, fontsize, thickness, line = notice
             cv2.putText(img, line, (x, img.shape[1] + y), cv2.FONT_HERSHEY_SIMPLEX,
                         fontsize, (32, 32, 32), thickness=thickness)
+
+    def add_alpha(self, img):
+        '''Add transparent pixels to prevent from being converted to JPEGs'''
+        # https://stackoverflow.com/questions/32290096/python-opencv-add-alpha-channel-to-rgb-image
+        b_channel, g_channel, r_channel = cv2.split(img)
+        alpha_channel = np.ones(b_channel.shape, dtype=b_channel.dtype) * 255
+        alpha_channel[0,0] = 0
+        img_BGRA = cv2.merge((b_channel, g_channel, r_channel, alpha_channel))
+        return img_BGRA
 
 def main():
     parser = OptionParser()
