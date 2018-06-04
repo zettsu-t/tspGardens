@@ -45,7 +45,7 @@ I created vertices and edges data of the map as [a plain text file](data/tsp_gar
 ...
 ```
 
-Notice that my TSP solver script is not error-prune yet and invalid data may cause errors or exceptions.
+Notice that invalid data may cause errors or exceptions.
 
 ## Find a route
 
