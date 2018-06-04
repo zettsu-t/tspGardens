@@ -55,7 +55,7 @@ Execute the following code in a shell at a directory including README.md.
 python scripts/make_route.py
 ```
 
-It reads data/in.png (as you downloaded) and data/tsp_gardens.txt (in this repository) and generates the following two image files. Python3 and packages imported from make_route.py are required.
+It reads data/in.png (as you downloaded) and data/tsp_gardens.txt (in this repository) and generates the following two image files. This command writes a sequence of vertex indexes (0 means the start and goal) as a route to stdout. Python3 and packages imported from make_route.py are required.
 
 * out_map.png : numbers of vertices are painted over in.png
 * out_route.png : a route is painted over in.png

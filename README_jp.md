@@ -57,7 +57,7 @@ README.mdがあるディレクトリで、
 python scripts/make_route.py
 ```
 
-を実行すると、data/in.pngとdata/tsp_gardens.txtを読み込んで、以下の画像ファイルを作成します。実行にはPython3と、make_route.pyからインポートしている各種パッケージが必要です。
+を実行すると、data/in.pngとdata/tsp_gardens.txtを読み込んで、以下の画像ファイルを作成します。標準出力には、順路で通る点の番号(0番が出発および到着地点)を順に表示します。実行にはPython3と、make_route.pyからインポートしている各種パッケージが必要です。
 
 * out_map.png : in.pngに、各点の番号を描画したもの
 * out_route.png : in.pngに、経路を描画したもの
