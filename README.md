@@ -16,7 +16,7 @@ Solving the original TSP results in missing edges and we need another solver.
 
 [Geospatial Information Authority of Japan](https://maps.gsi.go.jp/development/ichiran.html) publishes maps in Japan and we can use, copy, modify and transmit the maps and their derived works under the [license](http://www.gsi.go.jp/kikakuchousei/kikakuchousei40182.html).
 
-Details of Kyoto Botanical Gardens are also available from the [site](https://maps.gsi.go.jp/#18/35.051342/135.759140/&base=std&ls=std&disp=1&vs=c1j0h0k0l0u0t0z0r0s0f1&reliefdata=0G000000). We can clip the map on the website and save its PNG image as 'data/in.png' in our PCs.
+Details of Kyoto Botanical Gardens are also available from the [site](https://maps.gsi.go.jp/#18/35.051342/135.759140/&base=std&ls=std&disp=1&vs=c1j0h0k0l0u0t0z0r0s0f1&reliefdata=0G000000). We can clip the map on the website and save its PNG image as 'data/in.png' in our PCs. North and East must be omitted in these latitude and longitude values.
 
 |Parameter|Value|
 |:------|:------|
@@ -62,7 +62,7 @@ It reads data/in.png (as you downloaded) and data/tsp_gardens.txt (in this repos
 
 You can change input and output filenames with the following options.
 
-|Option|Usage|Default|
+|Option|Attribute|Default|
 |:------|:------|:------|
 |--input|filename of an input image map|data/in.png|
 |--map|Filename of a text file describing vertices and edges|data/tsp_gardens.txt|
