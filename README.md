@@ -72,6 +72,20 @@ You can change input and output filenames with the following options.
 python make_route.py --input in.png --map tsp_gardens.txt --output out
 ```
 
+## Output images
+
+These images are derived works and modified from a map of which Geospatial Information Authority of Japan owes copyright under the [license](http://www.gsi.go.jp/kikakuchousei/kikakuchousei40182.html).
+
+https://maps.gsi.go.jp/development/ichiran.html
+
+### A map of Kyoto Botanical Gardens with vertices
+
+![A map of Kyoto Botanical Gardens with vertices](images/tsp_gardens_map.png)
+
+### A route of Kyoto Botanical Gardens
+
+![A route of Kyoto Botanical Gardens](images/tsp_gardens_route.png)
+
 ## License
 
 Copyright (c) 2018 Zettsu Tatsuya

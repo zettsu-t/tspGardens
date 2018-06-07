@@ -290,19 +290,17 @@ class RoadMap(object):
         for route_index, vertex_index in enumerate(route):
             vertex = vertices[vertex_index]
             count = max([0, vertex_visited[vertex_index].index(route_index)])
-            new_ofs = count * 8
+            new_ofs = count * 4
 
-            span = 32
-            phase = (route_index // span) % 2
-            weight = (route_index % span) / span
-            color_value = weight if (phase == 0) else (1.0 - weight)
-            color_value = 64 + int(color_value * 128)
-            color = (255, color_value, color_value)
+            hue = int(route_index * 254 / len(route))
+            hsv = np.uint8([[[hue, 255, 160]]])
+            color = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)[0,0]
+            color = (int(color[0]), int(color[1]), int(color[2]))
             px, py = scale(vertex.x, vertex.y)
             if prev_px is not None:
                 cv2.arrowedLine(img=img, pt1=(prev_px + ofs, prev_py + ofs),
                                 pt2=(px + new_ofs, py + new_ofs), color=color,
-                                thickness=2, tipLength=0.2)
+                                thickness=1, tipLength=0.1)
             prev_px = px
             prev_py = py
             ofs = new_ofs
@@ -310,7 +308,7 @@ class RoadMap(object):
         for vertex in vertices:
             px, py = scale(vertex.x, vertex.y)
             tx = ','.join(map(str, vertex_visited[vertex.index]))
-            cv2.putText(img, tx, (px, py), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 0), thickness=1)
+            cv2.putText(img, tx, (px, py), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (0, 0, 0), thickness=1)
 
         self._draw_notices(img)
         img = self.add_alpha(img)

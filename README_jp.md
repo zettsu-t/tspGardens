@@ -74,13 +74,22 @@ python scripts/make_route.py
 python make_route.py --input in.png --map tsp_gardens.txt --output out
 ```
 
+## 出力例
+
+これらの画像は国土地理院ウェブサイトから入手した地理院地図を、[国土地理院コンテンツ利用規約](http://www.gsi.go.jp/kikakuchousei/kikakuchousei40182.html)に基づき加工して作成したものです。
+
+https://maps.gsi.go.jp/development/ichiran.html
+
+### 京都府立植物園の地図に点を打ったもの
+
+![京都府立植物園の地図に点を打ったもの](images/tsp_gardens_map.png)
+
+### 京都府立植物園の順路例
+
+![京都府立植物園の順路例](images/tsp_gardens_route.png)
+
 ## ライセンス
 
 Copyright (c) 2018 Zettsu Tatsuya
 
 本レポジトリのライセンスは、[MITライセンス](LICENSE.txt)です。
-
-出力画像の扱いは[国土地理院コンテンツ利用規約](http://www.gsi.go.jp/kikakuchousei/kikakuchousei40182.html)に従います。現時点での規約に基づき、複製、公衆送信等に当たっては以下の通り対応しています。
-
-* 出典(地理院地図)を明記する
-* 派生物(改変物)は、地理院地図のデータそのものではないことを明記する
