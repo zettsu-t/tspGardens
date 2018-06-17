@@ -69,6 +69,9 @@ python scripts/make_route.py
 |--input|入力する地図画像ファイル名|data/in.png|
 |--map|点と枝を記述したテキストファイル名|data/tsp_gardens.txt|
 |--output|出力ファイル名の接頭辞|out|
+|--solver|OR-Toolsを使う、またはデフォルト0|0|
+
+__--solver 1__ を指定すると、地図の点を枝に、枝を点に入れ替えた後、OR-Tools (Google Optimization Tools) のTSPソルバーを使って解きます。
 
 ```bash
 python make_route.py --input in.png --map tsp_gardens.txt --output out

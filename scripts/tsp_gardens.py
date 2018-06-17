@@ -4,10 +4,12 @@
 '''
 Find a route of a large garden
 usage:
-python3 tsp_gardens.py [--input input-png-filename] [--map input-map-filename] [--output output-png-basename]
+python3 tsp_gardens.py [--input input-png-filename] [--map input-map-filename]
+                       [--output output-png-basename] [--solver 0 or 1]
 + input-png-filename : PNG file describing a geographical map
 + input-map-filename : Plane text file describing vertices and edges of the map
 + output-png-basename : Basename of output PNG files
++ solver : Using OR-Tools (1) or default (0)
 '''
 
 import math
@@ -17,7 +19,10 @@ from collections import namedtuple
 from optparse import OptionParser
 import cv2
 from dijkstar import Graph, find_path
+import networkx as nx
 import numpy as np
+from ortools.constraint_solver import pywrapcp
+from ortools.constraint_solver import routing_enums_pb2
 
 ## Elements of routes
 ## Crossing
@@ -34,21 +39,40 @@ NOTICES = [[30, -235, 0.8, 2, 'This image is a derived work and modified from a 
            [30, -115, 0.8, 2, 'The original map is available at'],
            [30, -95, 0.5, 2, 'https://maps.gsi.go.jp/#18/35.051342/135.759140/&base=std&ls=std&disp=1&vs=c1j0h0k0l0u0t0z0r0s0f1&reliefdata=0G000000']]
 
+SOLVER_DEFAULT = 0
+SOLVER_OR_TOOLS_TSP = 1
+
+# Distance callback
+class CreateDistanceCallback(object):
+    def __init__(self, matrix):
+        self.matrix = matrix
+
+    def __call__(self, from_node, to_node):
+        return self.matrix[from_node][to_node]
+
 class RoadMap(object):
     '''Road map which consists of vertices and edges'''
 
     def __init__(self, options):
         self.options = options
-        self.vertices, self.edges = self.parse(options.input_map_filename)
-        self.edges, self.vertex_to_edge = self.calculate_costs(self.vertices, self.edges)
+        self.solver = options.solver
+        self.vertices, edges = self.parse(options.input_map_filename)
+        self.edges, self.edge_costs, self.vertex_to_edge = self.calculate_costs(self.vertices, edges)
+        if self.solver == SOLVER_OR_TOOLS_TSP:
+            self.graph, self.alt_vertices, self.edge_distances = self.make_graph(self.edges, self.edge_costs)
 
     def solve(self):
         '''Solve to find a route to visit all edges'''
-        self.paths, self.cost_matrix = self.find_shortest_paths(self.vertices, self.edges, self.vertex_to_edge)
-        self.route = self.find_route(self.vertices[0].index, self.edges,
-                                     self.vertex_to_edge, self.paths, self.cost_matrix)
-        self.route = self.fill_route(self.vertices[0].index, self.paths, self.route)
-        print(self.route)
+        if self.solver == SOLVER_OR_TOOLS_TSP:
+            self.paths, self.cost_matrix = self.find_shortest_paths_in_graph(self.graph)
+            self.route = self.find_route_in_graph(self.alt_vertices, self.edge_distances,
+                                                  self.paths, self.cost_matrix)
+        else:
+            self.paths, self.cost_matrix = self.find_shortest_paths(self.vertices, self.edges, self.vertex_to_edge)
+            route = self.find_route(self.vertices[0].index, self.edges,
+                                    self.vertex_to_edge, self.paths, self.cost_matrix)
+            self.route = self.fill_route(self.vertices[0].index, self.paths, route)
+        self.print_route(self.route, self.edge_costs)
 
     def draw_map(self, in_image_filename, out_image_filename):
         '''Superimposes vertex numbers'''
@@ -111,7 +135,9 @@ class RoadMap(object):
     def calculate_costs(self, vertices, edges):
         '''Calculate implicit costs of edges in the Euclidean distances'''
         new_edges = []
+        edge_costs = {}
         vertex_to_edge = defaultdict(list)
+
         for index, edge in enumerate(edges):
             cost = edge.cost
             if edge.cost is None:
@@ -124,10 +150,65 @@ class RoadMap(object):
             # Notice that tuples are immutable
             new_edge = Edge(start=edge.start, end=edge.end, cost=cost, index=index)
             new_edges.append(new_edge)
+            edge_costs[(edge.start, edge.end)] = cost
+            edge_costs[(edge.end, edge.start)] = cost
             vertex_to_edge[edge.start].append(index)
             vertex_to_edge[edge.end].append(index)
 
-        return new_edges, vertex_to_edge
+        return new_edges, edge_costs, vertex_to_edge
+
+    def make_graph(self, edges, edge_costs):
+        '''Make a graph object'''
+        graph = nx.Graph()
+        for edge in edges:
+            vertex_u, vertex_v = (edge.start, edge.end) if edge.start < edge.end else (edge.end, edge.start)
+            graph.add_edge(vertex_u, vertex_v, weight=edge.cost)
+
+        # Graph which has edges as vertices of 'graph' and vertices as edges of 'graph'
+        alt_graph = nx.line_graph(graph)
+
+        # Original vertex pair indexes to original edges
+        alt_vertix_index_to_original_edges = {}
+        # Original edges (pairs index) to original vertex pair indexes
+        original_edge_to_alt_vertex_index = {}
+        for index, original_edge in enumerate(alt_graph.nodes()):
+            # The vertex is an original edge and pair of original vertex
+            vertex_u, vertex_v = original_edge
+            edge = (vertex_u, vertex_v) if vertex_u < vertex_v else (vertex_v, vertex_u)
+            alt_vertix_index_to_original_edges[index] = edge
+            original_edge_to_alt_vertex_index[(vertex_u, vertex_v)] = index
+            original_edge_to_alt_vertex_index[(vertex_v, vertex_u)] = index
+
+        alt_edges = {}
+        max_weight = 0
+        for index, alt_edge in enumerate(alt_graph.edges()):
+            edge0_index = original_edge_to_alt_vertex_index[alt_edge[0]]
+            edge1_index = original_edge_to_alt_vertex_index[alt_edge[1]]
+            weight = (edge_costs[alt_edge[0]] + edge_costs[alt_edge[1]]) / 2.0
+            alt_edges[(edge0_index, edge1_index)] = weight
+            alt_edges[(edge1_index, edge0_index)] = weight
+            max_weight = max(weight, max_weight)
+
+        size = len(alt_graph.nodes())
+        penalty = size * max_weight * 3
+        edge_distances = []
+        for from_index in range(0, size):
+            row = []
+            for to_index in range(0, size):
+                edge0 = (from_index, to_index)
+                edge1 = (to_index, from_index)
+                if from_index == to_index:
+                    weight = 0.0
+                elif edge0 in alt_edges:
+                    weight = alt_edges[edge0]
+                elif edge1 in alt_edges:
+                    weight = alt_edges[edge1]
+                else:
+                    weight = penalty
+                row.append(weight)
+            edge_distances.append(row)
+
+        return graph, alt_vertix_index_to_original_edges, CreateDistanceCallback(edge_distances)
 
     def find_shortest_paths(self, vertices, edges, vertex_to_edge):
         '''Search paths for each vertices and its rests'''
@@ -162,6 +243,12 @@ class RoadMap(object):
                 paths[from_index].append(Path(nodes))
                 cost_matrix[from_index, to_index] = result.total_cost
 
+        return paths, cost_matrix
+
+    def find_shortest_paths_in_graph(self, graph):
+        '''Search paths for each vertices and its rests'''
+        paths = dict(nx.all_pairs_dijkstra_path(graph), weight='weight')
+        cost_matrix = dict(nx.all_pairs_dijkstra_path_length(graph), weight='weight')
         return paths, cost_matrix
 
     def find_route(self, initial_vertex, edges, edge_map, paths, cost_matrix):
@@ -257,6 +344,64 @@ class RoadMap(object):
             route.append(next_index)
         return next_index
 
+    def find_route_in_graph(self, alt_vertices, edge_distances, paths, cost_matrix):
+        '''
+        Find a route to visit each edge once or more.
+        modified from https://developers.google.com/optimization/routing/tsp
+        '''
+        routing = pywrapcp.RoutingModel(len(alt_vertices), 1, 0)
+        search_parameters = pywrapcp.RoutingModel.DefaultSearchParameters()
+        routing.SetArcCostEvaluatorOfAllVehicles(edge_distances)
+        assignment = routing.SolveWithParameters(search_parameters)
+
+        index = routing.Start(min(list(alt_vertices.keys())))
+        route = []
+        is_last = False
+
+        while True:
+            if is_last:
+                vertex_u, vertex_v = (route[-1], route[0])
+            else:
+                vertex_u, vertex_v = alt_vertices[routing.IndexToNode(index)]
+
+            if route:
+                sub_route = []
+                if route[-1] == vertex_u:
+                    route.append(vertex_v)
+                elif route[-1] == vertex_v:
+                    route.append(vertex_u)
+                else:
+                    vertex_last = route[-1]
+                    cost_u = cost_matrix[vertex_last][vertex_u]
+                    cost_v = cost_matrix[vertex_last][vertex_v]
+                    if cost_u < cost_v:
+                        route.extend(paths[vertex_last][vertex_u][1:])
+                        if route[-1] != vertex_v:
+                            route.append(vertex_v)
+                    else:
+                        route.extend(paths[vertex_last][vertex_v][1:])
+                        if route[-1] != vertex_u:
+                            route.append(vertex_u)
+            else:
+                route = [vertex_u, vertex_v]
+            if is_last:
+                break
+            else:
+                index = assignment.Value(routing.NextVar(index))
+                is_last = True if routing.IsEnd(index) else False
+        return route
+
+    def print_route(self, route, edge_costs):
+        '''Print a route and its cost'''
+        print(self.route)
+
+        cost = 0.0
+        pre_vertex = route[0]
+        for vertex in route[1:]:
+            cost += edge_costs[(pre_vertex, vertex)]
+            pre_vertex = vertex
+        print(cost)
+
     def _draw_map(self, in_image_filename, out_image_filename, vertices):
         '''Superimposes vertex numbers'''
         # Count when each vertex is visited on the route
@@ -338,6 +483,8 @@ def main():
                       help='Plane text file describing vertices and edges of the map')
     parser.add_option('-o', '--output', dest='output_image_basename', default='out',
                       help='Basename of output PNG files')
+    parser.add_option('-s', '--solver', type='int', dest='solver', default=0,
+                      help='Select solver (0 or 1)')
     (options, args) = parser.parse_args()
 
     road_map = RoadMap(options)

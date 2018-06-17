@@ -67,6 +67,9 @@ You can change input and output filenames with the following options.
 |--input|filename of an input image map|data/in.png|
 |--map|Filename of a text file describing vertices and edges|data/tsp_gardens.txt|
 |--output|Prefix for output images|out|
+|--solver|Using OR-Tools (1) or default (0)|0|
+
+If you specify __--solver 1__, this solver converts edges to vertices and vertices to edges and solves with the TSP solver in OR-Tools (Google Optimization Tools).
 
 ```bash
 python make_route.py --input in.png --map tsp_gardens.txt --output out
