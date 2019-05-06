@@ -1,5 +1,7 @@
 # Another traveling salesman problem
 
+Notice: This is an instance of the Chinese Postman Problem and is solved in O(V^3). I didn't know it when I wrote this article below.
+
 Japanese document is [here](README_jp.md).
 
 ## Problem statement
